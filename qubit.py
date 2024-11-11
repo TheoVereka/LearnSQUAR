@@ -3,6 +3,7 @@
 from jax.numpy import pi,cos,sin,arccos,arctan2,exp,array
 import qutip as qt
 import numpy as np
+import matplotlib
 
 
 class Qubit:
@@ -71,13 +72,17 @@ class Qubit:
 		actions = trajectory
 		rewards = [initial_state.compute_fidelity()]
 		bSphr = qt.Bloch()
-		bSphr.add_points(states[0].coordXYZ())
+		bSphr.add_vectors(states[0].coordXYZ())
 
 		for i in range(1,T+1):
 			states[i].ThetaPhi = (actions[i-1])(states[i-1].ThetaPhi)
 			rewards.append( states[i].compute_fidelity() )
 			bSphr.add_vectors(states[i].coordXYZ())
-
+	
+		cmap = matplotlib.pyplot.get_cmap('inferno', T+1)    # PiYG
+		bSphr.vector_color = [matplotlib.colors.rgb2hex(cmap(i)) for i in range(cmap.N)]
+		bSphr.vector_width = 2
+		bSphr.vector_alpha = [0.33]*(T+1)
 		bSphr.show()
 
 		return states, rewards
