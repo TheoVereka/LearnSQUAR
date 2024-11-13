@@ -36,3 +36,9 @@ states, rewards = qb.evaluate_trajectory(Qubit(pi-0.1, pi/2),actions)
 plt.plot(rewards)
 
 # %%
+# test random initialization
+
+rndQB = Qubit()
+rndQB.render_Bloch_repr()
+
+# %%

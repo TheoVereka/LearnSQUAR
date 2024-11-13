@@ -13,8 +13,19 @@ class Qubit:
 		...
 	"""
 
-	def __init__(self, theta, phi ):
+	def __init__(self, theta=None, phi=None ):
+		"""
+		Create a qubit from the given Bloch angles,
+		if angles are not fully given, create a random one with
+		probability uniformly distributed on the spherical measure.
+		"""
+		if (theta is None) or (phi is None): 
+			random3Dcoords=np.random.rand(3)-0.5
+			phi = pi+arctan2(-random3Dcoords[1],-random3Dcoords[0])
+			theta = arccos(random3Dcoords[2]/np.linalg.norm(random3Dcoords))
+		
 		self.ThetaPhi = (theta, phi)
+
 
 	def coordPC2(self):
 		"""Coordinates in Hilbert space PC2"""
@@ -86,6 +97,8 @@ class Qubit:
 		bSphr.show()
 
 		return states, rewards
+	
+
 
 
 
