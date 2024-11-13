@@ -1,5 +1,5 @@
 # define here the policy gradient algorithm with the training loop
-
+from policy import *
 
 
 class Policy_Gradient():

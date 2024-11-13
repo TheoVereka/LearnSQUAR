@@ -66,9 +66,10 @@ class Policy():
 		their probability normalized by softmax function 
 		"""
 		x,y = tp2xy(initial_state.ThetaPhi[0],initial_state.ThetaPhi[1])
+		input_layer = array([x,y])
 
-		#input x,y --eta--> output values --softmax--> proba
-		
+		#input x,y --eta--> output_layer --softmax--> proba
+
 		proba_action = [0.10, 0.02, 0.74, 0.01, 0.03, 0.06, 0.04]
 		action_type = int(np.random.choice(7,1,p=proba_action))-3
 		return action_type
