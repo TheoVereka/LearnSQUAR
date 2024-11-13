@@ -1,9 +1,10 @@
 # define here the functions that implement the action of gates on the qubit state
 # use these functions inside the RL environment class
-from jax.numpy import pi,cos,sin,arccos,arctan2,exp,array
+from jax.numpy import pi,cos,sin,arccos,arctan2,exp,array,mod,linalg
+from jax import random
 import qutip as qt
-import numpy as np
 import matplotlib
+import numpy.random as nprd
 
 
 class Qubit:
@@ -13,16 +14,16 @@ class Qubit:
 		...
 	"""
 
-	def __init__(self, theta=None, phi=None ):
+	def __init__(self, random_key, theta=None, phi=None, ):
 		"""
 		Create a qubit from the given Bloch angles,
 		if angles are not fully given, create a random one with
 		probability uniformly distributed on the spherical measure.
 		"""
 		if (theta is None) or (phi is None): 
-			random3Dcoords=np.random.rand(3)-0.5
+			random3Dcoords=random.normal(random_key,3)
 			phi = pi+arctan2(-random3Dcoords[1],-random3Dcoords[0])
-			theta = arccos(random3Dcoords[2]/np.linalg.norm(random3Dcoords))
+			theta = arccos(random3Dcoords[2]/linalg.norm(random3Dcoords))
 		
 		self.ThetaPhi = (theta, phi)
 
@@ -36,7 +37,7 @@ class Qubit:
 	def coordXYZ(self):
 		"""Coordinates in XYZ Bloch sphere"""
 		theta, phi = self.ThetaPhi
-		return array([np.sin(theta)*np.cos(phi) , np.sin(theta)*np.sin(phi) , np.cos(theta)])
+		return array([sin(theta)*cos(phi) , sin(theta)*sin(phi) , cos(theta)])
 
 	def compute_fidelity(self):
 		"""
@@ -44,7 +45,7 @@ class Qubit:
 		Return: fidelity = |<target|psi>|^2 = cos(theta/2)^2
 		"""
 		theta, phi = self.ThetaPhi
-		fidelity = (1. + np.cos(theta))/2
+		fidelity = (1. + cos(theta))/2
 		return fidelity
 
 

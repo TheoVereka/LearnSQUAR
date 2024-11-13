@@ -1,12 +1,14 @@
 # define here the deep neural network representation of the policy
 from env import *
 import jax.numpy as jnp
-from jax import grad, jit, vmap, random
+from jax import grad, jit, vmap
 import jax
+import random as rd # used only once per NN
 
 #%%
 # a parametrization which can avoid the singularity in spherical angles' poles
 def tp2xy(theta,phi):
+    phi = mod(phi,pi/2)
     x = theta/pi + 1/2 - 1/pi*arccos((4*phi/pi-1)*sin(theta))
     y = theta/pi - 1/2 + 1/pi*arccos((4*phi/pi-1)*sin(theta))
     return (x,y)
@@ -19,7 +21,7 @@ def xy2tp(x,y):
 
 class Policy():
 
-	def __init__(self,random_key=random.key(0)):
+	def __init__(self,random_key=random.key(rd.getrandbits(32))):
 		self.random_key = random_key
 		self.layers_size = None
 		self.weight_normalization = None
@@ -45,8 +47,8 @@ class Policy():
 			return ( (self.weight_normalization)(prev_layer) * random.normal(w_key, (next_layer, prev_layer,)), 
 		   			 scale_biais * random.normal(b_key, (next_layer,)) )
 
-		def init_network_params(sizes, keyss):
-			keys = random.split(keyss, len(sizes))
+		def init_network_params(sizes):
+			keys = random.split(self.random_key, len(sizes))
 			return [random_layer_params(prev_layer, next_layer, key) 
 		   			for prev_layer, next_layer, key in zip(sizes[:-1], sizes[1:], keys)]
 
@@ -56,7 +58,7 @@ class Policy():
 				self.activation_func = (lambda outputs: jnp.maximum(0,outputs))
 				self.weight_normalization = (lambda prev_layer: jnp.sqrt(2.0/prev_layer))
 			case _ : print("Currently only support ReLu")
-		self.params = init_network_params(layers_size, self.random_key)
+		self.params = init_network_params(layers_size)
 		
 
 	def _optimizer(self):
@@ -76,19 +78,19 @@ class Policy():
 		initial_states = []
 		# gradient[eta] = 0
 
-		for i in range(batch_size): 						### use vmap to do auto-batching
-			env.reset()
+		for i in range(batch_size): 								### use vmap to do auto-batching
+			self.random_key, subkey = random.split(self.random_key)				
+			env.reset(subkey)
 			trajectories_type.append([])
 			initial_states.append(env.state)
 			total_reward = 0
 			# grad_batch[eta] = 0
 
 			for t in range(total_steps):
-				action_type = self.predict(env.state)		### use vmap to do auto-batching
+				action_type = self.predict(env.state)				### use vmap to do auto-batching
 				trajectories_type[i].append(action_type)
 				# grad_batch[eta] += autodifferation_of_log_pi(action_type|state)
-				env.state.apply(env.gates,action_type)
-				total_reward += env.state.compute_fidelity()
+				total_reward += env.step(action_type)
 			#  grandient[eta]+= total_reward * grad_batch[eta]
 
 		# gradient[eta] /= batch_size
@@ -107,10 +109,8 @@ class Policy():
 			outputs = jnp.dot(w, activs) + b
 
 		proba_action = jax.nn.softmax(outputs)
-		# proba_action = [0.10, 0.02, 0.74, 0.01, 0.03, 0.06, 0.04]
-		action_type = int(np.random.choice(7,1,p=proba_action))-3
+		self.random_key, subkey = random.split(self.random_key)
+		action_type = int(random.choice(subkey,7,p=proba_action))-3
 		return action_type
 	
-
-
 

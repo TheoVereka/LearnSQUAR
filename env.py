@@ -3,7 +3,7 @@ from qubit import *
 
 
 
-class QubitEnv():
+class QubitEnv:
     """
     Gym style environment for RL
     Parameters:
@@ -15,11 +15,8 @@ class QubitEnv():
         """
         Initialize the qubit randomly as the initial_state
         """
-        self.state = Qubit()
+        self.state = None
         self.gates = QGates(4*pi/n_time_steps)
-        theta, phi = self.state.ThetaPhi
-        phi = np.mod(phi,pi/2)
-        self.state.ThetaPhi = (theta,phi)
 
 
     def step(self, action_type):
@@ -36,21 +33,23 @@ class QubitEnv():
         self.state.apply(self.gates, action_type)
         reward = self.state.compute_fidelity()
 
-        return self.state, reward
+        return reward
 
-    def reset(self):
+    def reset(self,random_key):
         """
         Resets the environment to its initial values.
         Returns:
             state:  array
                     the initial state of the environment
         """
-        self.state = Qubit()
+        self.state = Qubit(random_key)
+        
+        #####!!!!!!!!!#######
         theta, phi = self.state.ThetaPhi
-        phi = np.mod(phi,pi/2)
-        self.qb.ThetaPhi = (theta,phi)
+        phi = mod(phi,pi/2)
+        self.state.ThetaPhi = (theta,phi)
+        #####!!!!!!!!!#######
 
-        return self.state
 
     def render(self):
         """
