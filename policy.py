@@ -1,5 +1,8 @@
 # define here the deep neural network representation of the policy
 from env import *
+import jax.numpy as jnp
+from jax import grad, jit, vmap, random
+import jax
 
 #%%
 # a parametrization which can avoid the singularity in spherical angles' poles
@@ -16,21 +19,51 @@ def xy2tp(x,y):
 
 class Policy():
 
-	def __init__(self):
-		pass
+	def __init__(self,random_key=random.key(0)):
+		self.random_key = random_key
+		self.layers_size = None
+		self.weight_normalization = None
+		self.activation_func = None
+		self.params = None
+		
 
 
-	def _architecture(self):
+	def _architecture(self, layers_size=[2,10,30,20,7],activation_func="ReLu"):
 		"""
 		contains the NN architecture
+
+		Parameters:
+			layers_size : (int) , the N_neurons in each layer,
+			noted that the 1st layer size = 2, and last = 7,
+			corresponding to 1/4-sphere parametrization & 7 actions.
+
+		Return:
+			gaussian randomly distributed NN params: [ ([w],[b]), ([w],[b]), ([w],[b])... ]
 		"""
-		pass
+		def random_layer_params(prev_layer, next_layer, key, scale_biais=1e-2):
+			w_key, b_key = random.split(key)
+			return ( (self.weight_normalization)(prev_layer) * random.normal(w_key, (next_layer, prev_layer,)), 
+		   			 scale_biais * random.normal(b_key, (next_layer,)) )
+
+		def init_network_params(sizes, keyss):
+			keys = random.split(keyss, len(sizes))
+			return [random_layer_params(prev_layer, next_layer, key) 
+		   			for prev_layer, next_layer, key in zip(sizes[:-1], sizes[1:], keys)]
+
+		self.layers_size = layers_size
+		match activation_func:
+			case "ReLu" : 
+				self.activation_func = (lambda outputs: jnp.maximum(0,outputs))
+				self.weight_normalization = (lambda prev_layer: jnp.sqrt(2.0/prev_layer))
+			case _ : print("Currently only support ReLu")
+		self.params = init_network_params(layers_size, self.random_key)
+		
 
 	def _optimizer(self):
 		"""
-		initiate the deep learning optimizer with close physical guess
+		initiate the deep learning optimizer: step, momentum...
 		"""
-		pass
+		step_size = 0.015
 
 	def compute_gradients(self, total_steps:int, batch_size:int):
 		"""
@@ -43,7 +76,7 @@ class Policy():
 		initial_states = []
 		# gradient[eta] = 0
 
-		for i in range(batch_size):
+		for i in range(batch_size): 						### use vmap to do auto-batching
 			env.reset()
 			trajectories_type.append([])
 			initial_states.append(env.state)
@@ -51,7 +84,7 @@ class Policy():
 			# grad_batch[eta] = 0
 
 			for t in range(total_steps):
-				action_type = self.predict(env.state)
+				action_type = self.predict(env.state)		### use vmap to do auto-batching
 				trajectories_type[i].append(action_type)
 				# grad_batch[eta] += autodifferation_of_log_pi(action_type|state)
 				env.state.apply(env.gates,action_type)
@@ -60,17 +93,21 @@ class Policy():
 
 		# gradient[eta] /= batch_size
 
+		return initial_states, trajectories_type
+
 	def predict(self,initial_state:Qubit):
 		"""
 		evaluate the policy to generate an action_type by
 		their probability normalized by softmax function 
 		"""
 		x,y = tp2xy(initial_state.ThetaPhi[0],initial_state.ThetaPhi[1])
-		input_layer = array([x,y])
+		outputs = array([x,y])
+		for w, b in self.params :
+			activs = (self.activation_func)(outputs)
+			outputs = jnp.dot(w, activs) + b
 
-		#input x,y --eta--> output_layer --softmax--> proba
-
-		proba_action = [0.10, 0.02, 0.74, 0.01, 0.03, 0.06, 0.04]
+		proba_action = jax.nn.softmax(outputs)
+		# proba_action = [0.10, 0.02, 0.74, 0.01, 0.03, 0.06, 0.04]
 		action_type = int(np.random.choice(7,1,p=proba_action))-3
 		return action_type
 	
