@@ -13,7 +13,7 @@ episodic RL evironment: tranched time stamp, on which define states, between sta
 RL agent: input current state -> network with inner to-train parameters -> output probality distribution of actions (RL policy)  
   
 TODO:  
-- Set up the deep NN configuration
+- Parametrization !
 - perform autodifferentiation in JAX
 - think about how to train the policy (varying nothing? batch_size? even T_steps in training?)
  
