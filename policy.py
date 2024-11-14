@@ -1,36 +1,52 @@
 # define here the deep neural network representation of the policy
+### jax.example_libraries.stax.Dense()
 from env import *
 import jax.numpy as jnp
 from jax import grad, jit, vmap
+from jax.example_libraries import stax, optimizers
 import jax
 import random as rd # used only once per NN
 
 #%%
 # a parametrization which can avoid the singularity in spherical angles' poles
-def tp2xy(theta,phi):
-    phi = mod(phi,pi/2)
-    x = theta/pi + 1/2 - 1/pi*arccos((4*phi/pi-1)*sin(theta))
-    y = theta/pi - 1/2 + 1/pi*arccos((4*phi/pi-1)*sin(theta))
-    return (x,y)
 
-def xy2tp(x,y):
-    theta = pi/2*(x+y)
-    phi = pi/4*(1+sin(pi/2*(x-y))/sin(pi/2*(x+y)))
-    return (theta,phi)
+def parametrize(state:Qubit):
+
+	theta, phi = state.ThetaPhi
+	
+	def tp2xy(theta,phi):
+		phi = mod(phi,pi/2)
+		x = theta/pi + 1/2 - 1/pi*arccos((4*phi/pi-1)*sin(theta))
+		y = theta/pi - 1/2 + 1/pi*arccos((4*phi/pi-1)*sin(theta))
+		return array([x,y])
+
+	def xy2tp(x,y):
+		theta = pi/2*(x+y)
+		phi = pi/4*(1+sin(pi/2*(x-y))/sin(pi/2*(x+y)))
+		return (theta,phi)
+	
+	def normalized_tp(theta,phi):
+		return array([theta/pi, phi/2/pi])
+	
+	return normalized_tp(theta,phi)
 
 
 class Policy():
 
-	def __init__(self,random_key=random.key(rd.getrandbits(32))):
+	def __init__(self,random_key=random.key(rd.getrandbits(32)),layer_sizes=[2,10,30,20,7],learning_rate=1e-3):
 		self.random_key = random_key
 		self.layers_size = None
-		self.weight_normalization = None
-		self.activation_func = None
+		self.activation_func = stax.ReLu
 		self.params = None
+		self.apply_model = None
+		self.opt_state = None
+		self.opt_update = None
+		self.opt_get_params = None
+		self._architecture(layer_sizes)
+		self._optimizer(learning_rate)
 		
 
-
-	def _architecture(self, layers_size=[2,10,30,20,7],activation_func="ReLu"):
+	def _architecture(self, layer_sizes):
 		"""
 		contains the NN architecture
 
@@ -42,38 +58,59 @@ class Policy():
 		Return:
 			gaussian randomly distributed NN params: [ ([w],[b]), ([w],[b]), ([w],[b])... ]
 		"""
-		def random_layer_params(prev_layer, next_layer, key, scale_biais=1e-2):
-			w_key, b_key = random.split(key)
-			return ( (self.weight_normalization)(prev_layer) * random.normal(w_key, (next_layer, prev_layer,)), 
-		   			 scale_biais * random.normal(b_key, (next_layer,)) )
-
-		def init_network_params(sizes):
-			keys = random.split(self.random_key, len(sizes))
-			return [random_layer_params(prev_layer, next_layer, key) 
-		   			for prev_layer, next_layer, key in zip(sizes[:-1], sizes[1:], keys)]
-
-		self.layers_size = layers_size
-		match activation_func:
-			case "ReLu" : 
-				self.activation_func = (lambda outputs: jnp.maximum(0,outputs))
-				self.weight_normalization = (lambda prev_layer: jnp.sqrt(2.0/prev_layer))
-			case _ : print("Currently only support ReLu")
-		self.params = init_network_params(layers_size)
 		
+		layers = []
+		for i in range(len(layer_sizes) - 1):
+			layers.append(stax.Dense(layer_sizes[i + 1]))
+			layers.append(self.activation_func)
+		layers.pop()
+		layers.append(stax.LogSoftmax)
+		init_random_params, self.apply_model = stax.serial(*layers)
+		self.random_key, subkey = random.split(self.random_key)
+		_, self.params = init_random_params(subkey, (-1, layer_sizes[0]))
 
-	def _optimizer(self):
-		"""
-		initiate the deep learning optimizer: step, momentum...
-		"""
-		step_size = 0.015
 
-	def compute_gradients(self, total_steps:int, batch_size:int):
+	def _optimizer(self, learning_rate):
 		"""
-		compute the gradients of the policy w.r.t. the NN parameters
-		Parameter:
-			input : current state labeled in normalized (x,y)
+		initiate the deep learning optimizer: Adam
+		"""
+		opt_init, self.opt_update, self.opt_get_params = optimizers.adam(learning_rate)
+		self.opt_state = opt_init(self.params)
+
+
+
+
+
+	def predict(self,initial_state:Qubit):
+		"""
+		evaluate the policy to generate an action_type by
+		their probability normalized by logsoftmax function 
+		"""
+		inputs = parametrize(initial_state)
+		return (self.apply_model)(self.params, inputs)	
+	
+
+	def MC_sampling_action(self,logProba):
+		proba_action = exp(logProba)
+		self.random_key, subkey = random.split(self.random_key)
+		action_type = int(random.choice(subkey,7,p=proba_action))-3
+		return action_type
+	
+
+	def most_proba_action(self,logProba):
+		action_type = jnp.argmax(logProba)-3
+		return action_type
+	
+
+
+
+
+	def collect_traj(self, total_steps:int, batch_size:int):
+		"""
+		add sth.
 		"""
 		env = QubitEnv(total_steps)
+		env.reset()
 		trajectories_type = []
 		initial_states = []
 		# gradient[eta] = 0
@@ -97,20 +134,17 @@ class Policy():
 
 		return initial_states, trajectories_type
 
-	def predict(self,initial_state:Qubit):
-		"""
-		evaluate the policy to generate an action_type by
-		their probability normalized by softmax function 
-		"""
-		x,y = tp2xy(initial_state.ThetaPhi[0],initial_state.ThetaPhi[1])
-		outputs = array([x,y])
-		for w, b in self.params :
-			activs = (self.activation_func)(outputs)
-			outputs = jnp.dot(w, activs) + b
-
-		proba_action = jax.nn.softmax(outputs)
-		self.random_key, subkey = random.split(self.random_key)
-		action_type = int(random.choice(subkey,7,p=proba_action))-3
-		return action_type
+	
+	def pseudoloss_functional(proba, states, trajs):
+		return -expected
 	
 
+	def update_params(self,epoch):
+		"""
+		compute the gradients of the policy w.r.t. the NN parameters
+		Parameter:
+			input : current state labeled in normalized (x,y)
+		"""
+		grads = jax.grad(self.pseudoloss_functional)(self.params)
+		self.opt_state = self.opt_update(epoch, grads, self.opt_state)
+		self.params = self.opt_get_params(self.opt_state)

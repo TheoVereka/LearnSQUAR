@@ -124,8 +124,9 @@ class QGates:
 		self.Yp = lambda tp: ( arccos(cos(tp[0])*cos(delta)-sin(tp[0])*cos(tp[1])*sin(delta)) , pi+arctan2(-sin(tp[0])*sin(tp[1]),-cos(tp[0])*sin(delta)-sin(tp[0])*cos(tp[1])*cos(delta)) )
 		self.Zp = lambda tp: ( tp[0] , tp[1] + delta )
 
-	def match_gate_type(self, gate_type):
-		match gate_type:
+	def match_gate_type(self, action_type, state=Qubit(pi/2,pi/4)):
+		theta, phi = state.ThetaPhi
+		match action_type:
 			case -3: gate_func = self.Zn
 			case -2: gate_func = self.Yn
 			case -1: gate_func = self.Xn

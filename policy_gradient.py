@@ -5,22 +5,31 @@ from policy import *
 class Policy_Gradient():
 
 	def __init__(self):
+		"""
+		init NN
+		"""
 		pass
 
 
-	def train_policy(self):
+	def train_policy(self,n_epoch):
+		"""
+		Loop over epochs
+			collect_traj(policy.params)
+			update_params( to get grad(loss_functional)(params) ...)
+
+		"""
 		pass
 
 
 	def evaluate_policy(self):
 		"""
-		Evaluate performance of trained policy
+		Evaluate performance of trained policy: always take most proba action
 		"""
 		pass
 
 
 	def plot_returns(self):
 		"""
-		Plot the returns as a function of episode number
+		Plot the returns as a function of episode number: final reward/fidelity
 		"""
 		pass
