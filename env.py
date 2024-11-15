@@ -17,7 +17,6 @@ class QubitEnv:
         """
         self.state = None
         self.gates = QGates(4*pi/n_time_steps)
-        self.reset()
 
 
     def step(self, action_type):
@@ -31,10 +30,11 @@ class QubitEnv:
                     information provided by the environment about its current state:
                     (state, reward, done)
         """
+        done = False
         self.state.apply(self.gates, action_type)
         reward = self.state.compute_fidelity()
-
-        return self.state, reward
+        done = True
+        return self.state, reward, done
 
     def reset(self,random_key):
         """
@@ -43,7 +43,7 @@ class QubitEnv:
             state:  array
                     the initial state of the environment
         """
-        self.state = Qubit(random_key)
+        self.state = Qubit(random_key=random_key)
 
         if False:
             theta, phi = self.state.ThetaPhi

@@ -1,6 +1,6 @@
 # define here the functions that implement the action of gates on the qubit state
 # use these functions inside the RL environment class
-from jax.numpy import pi,cos,sin,arccos,arctan2,exp,array,mod,linalg
+from jax.numpy import pi,cos,sin,arccos,arctan2,exp,array,mod,linalg,sum
 from jax import random
 import qutip as qt
 import matplotlib
@@ -14,7 +14,7 @@ class Qubit:
 		...
 	"""
 
-	def __init__(self, random_key, theta=None, phi=None, ):
+	def __init__(self, random_key=None, theta=None, phi=None, ):
 		"""
 		Create a qubit from the given Bloch angles,
 		if angles are not fully given, create a random one with
@@ -124,8 +124,9 @@ class QGates:
 		self.Yp = lambda tp: ( arccos(cos(tp[0])*cos(delta)-sin(tp[0])*cos(tp[1])*sin(delta)) , pi+arctan2(-sin(tp[0])*sin(tp[1]),-cos(tp[0])*sin(delta)-sin(tp[0])*cos(tp[1])*cos(delta)) )
 		self.Zp = lambda tp: ( tp[0] , tp[1] + delta )
 
-	def match_gate_type(self, action_type, state=Qubit(pi/2,pi/4)):
-		theta, phi = state.ThetaPhi
+	def match_gate_type(self, action_type, state=None):
+		if isinstance(state,Qubit): theta, phi = state.ThetaPhi
+		else: phi = pi/4
 		match action_type:
 			case -3: gate_func = self.Zn
 			case -2: gate_func = self.Yn

@@ -18,6 +18,8 @@ class Policy_Gradient():
 			update_params( to get grad(loss_functional)(params) ...)
 
 		"""
+		for epoch in len(self.policy.batch_size):
+			True
 		pass
 
 
