@@ -13,7 +13,5 @@ episodic RL evironment: tranched time stamp, on which define states, between sta
 RL agent: input current state -> network with inner to-train parameters -> output probality distribution of actions (RL policy)  
   
 TODO:  
-- Parametrization with no degeneracy and discontinuity
-- Autobatch vmap
-- think about how to train the policy (varying nothing? batch_size? even T_steps in training?)
+- Find compatible way between measure fidelity and final time cumulated reward.
  
