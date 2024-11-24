@@ -8,7 +8,7 @@ import qutip
 import numpy.random as nprd
 
 #%%
-strTime = "21_2330"
+strTime = "23_1107"
 
 #%%
 layer_sizes, batches_size, learning_rate, l2regularizer, T_steps, load_state, fidelitieS = pickle.load(open("./NNparams_"+strTime+".pkl", "rb"))
@@ -41,16 +41,21 @@ ax = fig.add_subplot()
 for i in range(5):
     ax.plot(fidelitieS[i])
 
+fig = plt.figure()
+ax = fig.add_subplot()
+ax.loglog((1-array(fidelitieS[0])))
+ax.loglog((array(fidelitieS[4])))
+fig.show()
 
 
 #%%
 b = qutip.Bloch()
 #b.render()
-number_line = 20
+number_line = 15
 points = [[],[],[]]
 for i in range(number_line+1):
      for j in range(number_line+1):
-            input = array([i/number_line+(5-i)/10000,j/number_line+(5-j)/10000])
+            input = array([i/number_line+(5-i)/10000,(j/number_line+(5-j)/10000)/2+1/4])
             #input = nprd.rand(2)
             tp = unparametrize(input)
             point1 = tp2xyz(tp)
@@ -75,9 +80,10 @@ for i in range(number_line+1):
             points[1].append(point1[1])
             points[2].append(point1[2])
 b.add_points(points,alpha=0.5)
-#b.view = [-30,-30]
+b.view = [110,-30]
 #b.view=[-180,0]
 b.show()
+#b.save(strTime+".png")
 
 #%%
 b = qutip.Bloch()

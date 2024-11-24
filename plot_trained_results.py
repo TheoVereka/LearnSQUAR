@@ -8,7 +8,7 @@ import qutip
 import numpy.random as nprd
 
 #%%
-strTime = "21_2319"
+strTime = "23_1102"
 
 #%%
 layer_sizes, batches_size, learning_rate, l2regularizer, T_steps, load_state, fidelitieS = pickle.load(open("./NNparams_"+strTime+".pkl", "rb"))
@@ -39,8 +39,12 @@ def tp2xyz(tp):
 
 fig = plt.figure()
 ax = fig.add_subplot()
-for i in range(5):
-    ax.plot(fidelitieS[i])
+ax.loglog((1-array(fidelitieS[0])))
+ax.loglog((array(fidelitieS[4])))
+fig.show()
+
+
+print(fidelitieS[0][-1],fidelitieS[2][-1])
 
 #%%
 b = qutip.Bloch()
@@ -52,27 +56,29 @@ for i in range(number_line+1):
             input = array([i/number_line+(5-i)/10000,j/number_line+(5-j)/10000])
             #input = nprd.rand(2)
             tp = unparametrize(input)
+            tp = tp.at[1].set(tp[1]) #+3*pi/2)
             point1 = tp2xyz(tp)
-            a_rot = round(jnp.argmax(apply_model(params,input)))
-            delta= delta/3
+            a = round(jnp.argmax(apply_model(params,input)))  #* 0 + 3
+            delta = delta/2
+            a_rot = mod(a + jnp.floor(tp[1]/pi*2),4)
             new_tp = array([
-        jnp.greater_equal(a_rot,4)*tp[0]+
-        jnp.less(a_rot,4)*(
-            equal(a_rot,3)*arccos(cos(tp[0])*cos(delta)+sin(tp[0])*cos(tp[1])*sin(delta)) +
-            equal(a_rot,2)*arccos(cos(tp[0])*cos(delta)-sin(tp[0])*sin(tp[1])*sin(delta)) +
-            equal(a_rot,0)*arccos(cos(tp[0])*cos(delta)+sin(tp[0])*sin(tp[1])*sin(delta)) +
-            equal(a_rot,1)*arccos(cos(tp[0])*cos(delta)-sin(tp[0])*cos(tp[1])*sin(delta)) )
-        ,
-        equal(a_rot,6)*tp[1]+
-        equal(a_rot,4)*mod(tp[1]+delta,2*pi)+
-        equal(a_rot,5)*mod(tp[1]-delta,2*pi)+
-        jnp.less(a_rot,4)*(
-            equal(a_rot,3)*( pi+arctan2(-sin(tp[0])*sin(tp[1]),cos(tp[0])*sin(delta)-sin(tp[0])*cos(tp[1])*cos(delta)))  +
-            equal(a_rot,2)*( pi+arctan2(-cos(tp[0])*sin(delta)-sin(tp[0])*sin(tp[1])*cos(delta),-sin(tp[0])*cos(tp[1]))) +
-            equal(a_rot,0)*( pi+arctan2(cos(tp[0])*sin(delta)-sin(tp[0])*sin(tp[1])*cos(delta),-sin(tp[0])*cos(tp[1])))  +
-            equal(a_rot,1)*( pi+arctan2(-sin(tp[0])*sin(tp[1]),-cos(tp[0])*sin(delta)-sin(tp[0])*cos(tp[1])*cos(delta))) )
-        ])
-            delta= delta*3
+                jnp.greater_equal(a,4)*tp[0]+
+                jnp.less(a,4)*(
+                    equal(a_rot,3)*arccos(cos(tp[0])*cos(delta)+sin(tp[0])*cos(tp[1])*sin(delta)) +
+                    equal(a_rot,2)*arccos(cos(tp[0])*cos(delta)-sin(tp[0])*sin(tp[1])*sin(delta)) +
+                    equal(a_rot,0)*arccos(cos(tp[0])*cos(delta)+sin(tp[0])*sin(tp[1])*sin(delta)) +
+                    equal(a_rot,1)*arccos(cos(tp[0])*cos(delta)-sin(tp[0])*cos(tp[1])*sin(delta)) )
+                ,
+                equal(a,6)*tp[1]+
+                equal(a,4)*mod(tp[1]+delta,2*pi)+
+                equal(a,5)*mod(tp[1]-delta,2*pi)+
+                jnp.less(a,4)*(
+                    equal(a_rot,3)*( pi+arctan2(-sin(tp[0])*sin(tp[1]),cos(tp[0])*sin(delta)-sin(tp[0])*cos(tp[1])*cos(delta)))  +
+                    equal(a_rot,2)*( pi+arctan2(-cos(tp[0])*sin(delta)-sin(tp[0])*sin(tp[1])*cos(delta),-sin(tp[0])*cos(tp[1]))) +
+                    equal(a_rot,0)*( pi+arctan2(cos(tp[0])*sin(delta)-sin(tp[0])*sin(tp[1])*cos(delta),-sin(tp[0])*cos(tp[1])))  +
+                    equal(a_rot,1)*( pi+arctan2(-sin(tp[0])*sin(tp[1]),-cos(tp[0])*sin(delta)-sin(tp[0])*cos(tp[1])*cos(delta))) )
+            ])
+            delta= delta*2
             point2 = tp2xyz(new_tp+array([0.00001,0.00001]))
             b.add_arc( start=point1, end=point2, fmt='r' )
             points[0].append(point1[0])
@@ -80,9 +86,11 @@ for i in range(number_line+1):
             points[2].append(point1[2])
 b.add_points(points,alpha=0.5)
 #b.view = [-30,-30]
+#b.view = [180,40]
 b.show()
 
-#%%
+
+"""
 b = qutip.Bloch()
 #b.render()
 number_line = 10
@@ -96,3 +104,4 @@ for i in range(number_line):
 b.add_arc(array([1,0,0]),array([0,0,-1]))
 b.add_arc(array([0,1,0]),array([0,0,-1]))
 b.show()
+"""
