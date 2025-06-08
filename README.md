@@ -1,5 +1,5 @@
 # LearnSQUAR 
-Miniproject of reinforcement rearning for a Single Qubit's Unitary Active Reset  
+Miniproject of reinforcement learning for a Single Qubit's Unitary Active Reset  
 JAX 0.4.35, Python 3.10.11, VSCode 1.95.2, CPU i9-13900H  
   
 Goal:  
